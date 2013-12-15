@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#import <MapKit/MapKit.h>
 
 @interface ShapePoint : NSObject {
     double latitude;
@@ -18,13 +19,19 @@
 @private
     NSMutableArray *_points;
     BOOL _needs_sort;
+    BOOL _needs_region;
+    MKCoordinateRegion _region;
 }
 
 @property (nonatomic, retain) NSMutableArray *_points;
+@property (nonatomic, assign) MKCoordinateRegion _region;
 @property BOOL _needs_sort;
+@property BOOL _needs_region;
 
 - (void)addPoint:(ShapePoint *)point;
 - (NSArray *)points;
+- (MKCoordinateRegion)region;
+- (CLLocationCoordinate2D *)coordinates;
 
 @end
 
