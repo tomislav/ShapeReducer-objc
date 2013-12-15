@@ -4,13 +4,14 @@
 
 @synthesize latitude, longitude, sequence;
 
-- (id)initWithLatitude:(double)aLatitude longitude:(double)aLongitude sequence:(unsigned int)aSequence {
-	if ((self = [super init])) { 
-		self.latitude = aLatitude;
-		self.longitude = aLongitude;
+- (id)initWithLatitude:(double)aLatitude longitude:(double)aLongitude sequence:(unsigned int)aSequence
+{
+    if ((self = [super init])) {
+        self.latitude = aLatitude;
+        self.longitude = aLongitude;
         self.sequence = aSequence;
-	} 
-	return self; 
+    }
+    return self;
 }
 
 - (id)init
@@ -23,26 +24,30 @@
 
 @implementation Shape
 
-@synthesize _points, _needs_sort;
+@synthesize _points, _needs_sort, _needs_region, _region;
 
 - (id)init
 {
-	if ((self = [super init])) { 
+    if ((self = [super init])) {
         _points = [[NSMutableArray alloc] init];
-		_needs_sort = NO;
-	} 
+        _needs_sort = NO;
+        _needs_region = NO;
+    }
     return self;
 }
 
-- (void)addPoint:(ShapePoint *)point {
+- (void)addPoint:(ShapePoint *)point
+{
     [_points addObject:point];
     _needs_sort = YES;
+    _needs_region = YES;
 }
 
-- (NSArray *)points {
+- (NSArray *)points
+{
     if (_needs_sort) {
         NSComparisonResult (^sortBlock)(id, id) = ^(id obj1, id obj2) {
-            if ([obj1 sequence] > [obj2 sequence]) { 
+            if ([obj1 sequence] > [obj2 sequence]) {
                 return (NSComparisonResult)NSOrderedDescending;
             }
             if ([obj1 sequence] < [obj2 sequence]) {
@@ -51,15 +56,53 @@
             return (NSComparisonResult)NSOrderedSame;
         };
         NSArray *sortedPoints = [_points sortedArrayUsingComparator:sortBlock];
-        return sortedPoints;
+        _needs_sort = NO;
+        _points = [sortedPoints copy];
     }
     return _points;
 }
 
-- (void)dealloc {
-	[_points release];
-	[super dealloc];
+- (MKCoordinateRegion)region
+{
+    if (_needs_region) {
+        CLLocationDegrees latDelta, lonDelta;
+        double minLat = [(ShapePoint *)_points[0] latitude];
+        double minLon = [(ShapePoint *)_points[0] longitude];
+        double maxLat = [(ShapePoint *)_points[0] latitude];
+        double maxLon = [(ShapePoint *)_points[0] longitude];
+        for (ShapePoint * p in _points) {
+            if (p.latitude > maxLat)
+                maxLat = p.latitude;
+            if (p.latitude < minLat)
+                minLat = p.latitude;
+            if (p.longitude > maxLon)
+                maxLon = p.longitude;
+            if (p.longitude < minLon)
+                minLon = p.longitude;
+        }
+        latDelta = (CLLocationDegrees)(maxLat - minLat);
+        lonDelta = (CLLocationDegrees)(maxLon - minLon);
+        MKCoordinateSpan span = MKCoordinateSpanMake(latDelta * 1.75, lonDelta * 1.5);
+        CLLocationCoordinate2D center = CLLocationCoordinate2DMake(maxLat - (latDelta / 2.0), maxLon - (lonDelta / 2.0));
+        _region = MKCoordinateRegionMake(center, span);
+        _needs_region = NO;
+    }
+    return _region;
 }
+
+/** List of coordinates, for use in methods that don't accept NSArray, such as MKPolyline polylineWithCoordinates */
+- (CLLocationCoordinate2D *)coordinates {
+    // Points need to be sorted
+    NSArray *points = self.points;
+    CLLocationCoordinate2D *coordinateArray = malloc(sizeof(CLLocationCoordinate2D) * points.count);
+    int i = 0;
+    for (ShapePoint *p in points) {
+        coordinateArray[i] = CLLocationCoordinate2DMake(p.latitude, p.longitude);
+        i++;
+    }
+    return coordinateArray;
+}
+
 
 @end
 
@@ -69,33 +112,34 @@
 - (id)init
 {
     self = [super init];
-    
     return self;
 }
 
-- (Shape*)reduce:(Shape*)aShape tolerance:(double)tolerance {
+- (Shape*)reduce:(Shape*)aShape tolerance:(double)tolerance
+{
     if (tolerance <= 0 || [aShape.points count] < 3) {
         return aShape;
     }
     
     NSArray *points = [aShape points];
-    Shape *newShape = [[[Shape alloc] init] autorelease];
+    Shape *newShape = [[Shape alloc] init];
     
     [newShape addPoint:[points objectAtIndex:0]];
     [newShape addPoint:[points lastObject]];
-
+    
     [self douglasPeuckerReductionWithTolerance:tolerance shape:aShape
-                               outputShape:newShape firstIndex:0 lastIndex:[points count]-1];
-        
+                                   outputShape:newShape firstIndex:0 lastIndex:[points count]-1];
+    
     return newShape;
     
 }
 
-- (void) douglasPeuckerReductionWithTolerance:(double)tolerance shape:(Shape*)shape outputShape:(Shape*)outputShape firstIndex:(int)first lastIndex:(int)last { 
+- (void) douglasPeuckerReductionWithTolerance:(double)tolerance shape:(Shape*)shape outputShape:(Shape*)outputShape firstIndex:(int)first lastIndex:(int)last
+{
     if (last <= first + 1) {
         return;
     }
-        
+    
     NSArray *points = [shape points];
     
     double distance, maxDistance = 0.0;
@@ -115,13 +159,13 @@
             indexFarthest=idx;
         }
     }
-        
+    
     if (maxDistance>tolerance && indexFarthest!=0) {
         //add index of Point to list of Points to keep
         [outputShape addPoint:[points objectAtIndex:indexFarthest]];
         
         [self douglasPeuckerReductionWithTolerance:tolerance shape:shape
-                                   outputShape:outputShape firstIndex:first lastIndex:indexFarthest];
+                                       outputShape:outputShape firstIndex:first lastIndex:indexFarthest];
         
         [self douglasPeuckerReductionWithTolerance:tolerance shape:shape outputShape:outputShape firstIndex:indexFarthest lastIndex:last];
     }
@@ -131,18 +175,18 @@
 {
     double area = 0.0, bottom = 0.0, height = 0.0;
     area = ABS(
-                      (
-                       lineStart.latitude * lineEnd.longitude
-                       + lineEnd.latitude * point.longitude
-                       + point.latitude * lineStart.longitude
-                       - lineEnd.latitude * lineStart.longitude
-                       - point.latitude * lineEnd.longitude
-                       - lineStart.latitude * point.longitude
-                       ) / 2.0);
-     
+               (
+                lineStart.latitude * lineEnd.longitude
+                + lineEnd.latitude * point.longitude
+                + point.latitude * lineStart.longitude
+                - lineEnd.latitude * lineStart.longitude
+                - point.latitude * lineEnd.longitude
+                - lineStart.latitude * point.longitude
+                ) / 2.0);
+    
     bottom = sqrt(pow(lineStart.latitude - lineEnd.latitude, 2) +
-                         pow(lineStart.longitude - lineEnd.longitude, 2));
-
+                  pow(lineStart.longitude - lineEnd.longitude, 2));
+    
     height = area / bottom * 2.0;
     
     return height;
