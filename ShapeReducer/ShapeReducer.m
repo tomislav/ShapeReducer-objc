@@ -2,63 +2,38 @@
 
 @implementation ShapePoint
 
-@synthesize latitude, longitude, sequence;
-
-- (id)initWithLatitude:(double)aLatitude longitude:(double)aLongitude sequence:(unsigned int)aSequence {
+- (id)initWithLatitude:(double)aLatitude longitude:(double)aLongitude {
 	if ((self = [super init])) { 
-		self.latitude = aLatitude;
-		self.longitude = aLongitude;
-        self.sequence = aSequence;
-	} 
-	return self; 
-}
-
-- (id)init
-{
-    self = [super init];
-    return self;
+		_latitude = aLatitude;
+		_longitude = aLongitude;
+	}
+	return self;
 }
 
 @end
 
 @implementation Shape
 
-@synthesize _points, _needs_sort;
+@synthesize _points;
 
 - (id)init
 {
 	if ((self = [super init])) { 
         _points = [[NSMutableArray alloc] init];
-		_needs_sort = NO;
-	} 
+	}
     return self;
 }
 
 - (void)addPoint:(ShapePoint *)point {
     [_points addObject:point];
-    _needs_sort = YES;
 }
 
 - (NSArray *)points {
-    if (_needs_sort) {
-        NSComparisonResult (^sortBlock)(id, id) = ^(id obj1, id obj2) {
-            if ([obj1 sequence] > [obj2 sequence]) { 
-                return (NSComparisonResult)NSOrderedDescending;
-            }
-            if ([obj1 sequence] < [obj2 sequence]) {
-                return (NSComparisonResult)NSOrderedAscending;
-            }
-            return (NSComparisonResult)NSOrderedSame;
-        };
-        NSArray *sortedPoints = [_points sortedArrayUsingComparator:sortBlock];
-        return sortedPoints;
-    }
     return _points;
 }
 
 - (void)dealloc {
-	[_points release];
-	[super dealloc];
+    _points = nil;
 }
 
 @end
@@ -66,32 +41,24 @@
 
 @implementation ShapeReducer
 
-- (id)init
-{
-    self = [super init];
-    
-    return self;
-}
-
 - (Shape*)reduce:(Shape*)aShape tolerance:(double)tolerance {
     if (tolerance <= 0 || [aShape.points count] < 3) {
         return aShape;
     }
     
-    NSArray *points = [aShape points];
-    Shape *newShape = [[[Shape alloc] init] autorelease];
+    NSArray *points = aShape.points;
+    Shape *newShape = [[Shape alloc] init];
     
-    [newShape addPoint:[points objectAtIndex:0]];
-    [newShape addPoint:[points lastObject]];
+    [newShape addPoint:points.firstObject];
 
     [self douglasPeuckerReductionWithTolerance:tolerance shape:aShape
                                outputShape:newShape firstIndex:0 lastIndex:[points count]-1];
-        
-    return newShape;
+    [newShape addPoint:points.lastObject];
     
+    return newShape;
 }
 
-- (void) douglasPeuckerReductionWithTolerance:(double)tolerance shape:(Shape*)shape outputShape:(Shape*)outputShape firstIndex:(int)first lastIndex:(int)last { 
+- (void) douglasPeuckerReductionWithTolerance:(double)tolerance shape:(Shape*)shape outputShape:(Shape*)outputShape firstIndex:(NSUInteger)first lastIndex:(NSUInteger)last {
     if (last <= first + 1) {
         return;
     }
@@ -99,12 +66,12 @@
     NSArray *points = [shape points];
     
     double distance, maxDistance = 0.0;
-    int indexFarthest = 0;
+    NSUInteger indexFarthest = 0;
     
     ShapePoint *firstPoint = [points objectAtIndex:first];
     ShapePoint *lastPoint = [points objectAtIndex:last];
     
-    for (int idx=first+1; idx<last; idx++) {
+    for (NSUInteger idx=first+1; idx<last; idx++) {
         ShapePoint *point = [points objectAtIndex:idx];
         
         distance = [ShapeReducer orthogonalDistanceWithPoint:point lineStart:firstPoint lineEnd:lastPoint];
@@ -118,11 +85,9 @@
         
     if (maxDistance>tolerance && indexFarthest!=0) {
         //add index of Point to list of Points to keep
-        [outputShape addPoint:[points objectAtIndex:indexFarthest]];
-        
         [self douglasPeuckerReductionWithTolerance:tolerance shape:shape
                                    outputShape:outputShape firstIndex:first lastIndex:indexFarthest];
-        
+        [outputShape addPoint:[points objectAtIndex:indexFarthest]];
         [self douglasPeuckerReductionWithTolerance:tolerance shape:shape outputShape:outputShape firstIndex:indexFarthest lastIndex:last];
     }
 }
