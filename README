@@ -1,5 +1,0 @@
-Path optimization using the Douglas-Peucker Line Approximation Algorithm in Objective C
-
-http://en.wikipedia.org/wiki/Ramer-Douglas-Peucker%5Falgorithm
-
-Written by Tomislav Filipčić <tomislav@me.com>. Ported from PHP port by Quentin Zervaas <http://www.phpriot.com/articles/reducing-map-path-douglas-peucker-algorithm>
