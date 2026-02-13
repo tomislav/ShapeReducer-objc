@@ -2,7 +2,7 @@
 
 Path optimization using the Ramer-Douglas-Peucker line simplification algorithm.
 
-Written by Tomislav Filipčić <tomislav@me.com>. Ported from PHP port by Quentin Zervaas <http://www.phpriot.com/articles/reducing-map-path-douglas-peucker-algorithm>
+Written by Tomislav Filipčić <tomislav@me.com>
 
 ## Installation
 
