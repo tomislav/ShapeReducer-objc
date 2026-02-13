@@ -6,13 +6,11 @@ All notable changes to this project are documented in this file.
 
 ### Added
 - Added unit tests covering sorting, endpoint retention, degenerate segments, and return semantics in `/Tests/ShapeReducerTests.m`.
-- Expanded README with installation, usage example, tolerance units, and behavior notes.
 
 ### Changed
 - `ShapeReducer` public API now exposes only consumer-facing methods.
 - `reduce:tolerance:` now always returns a new `Shape` instance.
 - Internal index/sequence handling now uses `NSUInteger`.
-- Podspec iOS deployment target raised and package metadata updated for version `2.0.0`.
 
 ### Fixed
 - Prevented divide-by-zero in orthogonal distance calculation for degenerate line segments.
